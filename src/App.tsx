@@ -20,6 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import {
@@ -44,8 +45,6 @@ interface HistoryItem {
 export default function App() {
   const [text, setText] = useState("");
   const [voice, setVoice] = useState<VoiceName>("Zephyr");
-  const [style, setStyle] = useState("neutral");
-  const [temperature, setTemperature] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -56,9 +55,7 @@ export default function App() {
       title: "Gemini 3.1 TTS 体験スタジオ",
       subtitle: "次世代リアルタイム音声合成の進化を体感する",
       modelConfig: "モデル設定",
-      expressionStyle: "表現スタイル",
       voiceSelection: "ボイス選択",
-      temperature: "温度 (表現の幅)",
       inputLabel: "読み上げテキスト",
       generateBtn: "音声を生成して再生",
       generating: "生成中...",
@@ -72,15 +69,14 @@ export default function App() {
       feature3: "指示遂行: 「ささやき」などの指示を理解",
       feature4: "高音質: クリアで人間らしい響き",
       placeholder: "ここにテキストを入力するか、下のプリセットを試してください...",
+      instructionPlaceholder: "例: 秘密を教えるようにささやいて、ニュースキャスターのようにハキハキと",
       presetsLabel: "進化を体験するプリセット",
     },
     en: {
       title: "Gemini 3.1 TTS Experience",
       subtitle: "Explore the evolution of real-time speech synthesis",
       modelConfig: "Model Config",
-      expressionStyle: "Expression Style",
       voiceSelection: "Voice Selection",
-      temperature: "Temperature",
       inputLabel: "Transcript Input",
       generateBtn: "Generate & Play",
       generating: "Generating...",
@@ -94,38 +90,30 @@ export default function App() {
       feature3: "Instruction Following: Understands style cues",
       feature4: "High Fidelity: Clear and human-like",
       placeholder: "Enter text here or try a preset below...",
+      instructionPlaceholder: "e.g. Whisper like a secret, Speak like a news anchor",
       presetsLabel: "Experience Presets",
     }
   };
-
-  const styles = [
-    { id: "neutral", label: { ja: "標準", en: "Neutral" }, prompt: "" },
-    { id: "cheerful", label: { ja: "明るく", en: "Cheerful" }, prompt: "Say cheerfully: " },
-    { id: "sad", label: { ja: "悲しく", en: "Sad" }, prompt: "Say sadly: " },
-    { id: "excited", label: { ja: "興奮", en: "Excited" }, prompt: "Say with great excitement: " },
-    { id: "whisper", label: { ja: "ささやき", en: "Whisper" }, prompt: "Whisper this: " },
-    { id: "serious", label: { ja: "真剣", en: "Serious" }, prompt: "Say in a serious, professional tone: " },
-  ];
 
   const presets = [
     {
       title: { ja: "感情の指示 (指示遂行能力)", en: "Emotional Cues (Instruction Following)" },
       text: { 
-        ja: "「すごく秘密めいた感じで、ささやくように言って：」ここだけの話なんだけど、実は Gemini 3.1 は指示を直接理解できるようになったんだよ。", 
+        ja: "すごく秘密めいた感じで、ささやくように言って：ここだけの話なんだけど、実は Gemini 3.1 は指示を直接理解できるようになったんだよ。", 
         en: "Say it like you're telling a deep secret, whispering: I have a secret to tell you. Gemini 3.1 can now understand natural language instructions directly." 
       }
     },
     {
       title: { ja: "自然な抑揚 (ネイティブ生成)", en: "Natural Prosody (Native Modality)" },
       text: { 
-        ja: "「ニュースキャスターのように、ハキハキと：」本日のニュースをお伝えします。Gemini 3.1 Flash TTS は、まるで人間が話しているかのような自然なリズムを実現しました。", 
+        ja: "ニュースキャスターのように、ハキハキと：本日のニュースをお伝えします。Gemini 3.1 Flash TTS は、まるで人間が話しているかのような自然なリズムを実現しました。", 
         en: "Like a professional news anchor: Reporting live today. Gemini 3.1 Flash TTS achieves a natural rhythm that sounds just like a human speaker." 
       }
     },
     {
       title: { ja: "リアルタイム対話 (低遅延)", en: "Real-time Interaction (Low Latency)" },
       text: { 
-        ja: "「友達と話しているように、カジュアルに：」ねえ、Gemini 3.1 って知ってる？反応がめちゃくちゃ速いから、本当の会話みたいにスムーズに話せるんだよ！", 
+        ja: "友達と話しているように、カジュアルに：ねえ、Gemini 3.1 って知ってる？反応がめちゃくちゃ速いから、本当の会話みたいにスムーズに話せるんだよ！", 
         en: "Casual conversation with a friend: Hey, have you heard about Gemini 3.1? It's so fast that it feels like we're having a real, smooth conversation!" 
       }
     }
@@ -139,11 +127,7 @@ export default function App() {
 
     setIsLoading(true);
     try {
-      const selectedStyle = styles.find(s => s.id === style);
-      const stylePrompt = selectedStyle?.prompt || "";
-      const fullText = `${stylePrompt}${text}`;
-
-      const audioData = await generateSpeech({ text: fullText, voice, temperature });
+      const audioData = await generateSpeech({ text, voice });
       
       const newItem: HistoryItem = {
         id: crypto.randomUUID(),
@@ -267,20 +251,6 @@ export default function App() {
                 </SelectContent>
               </Select>
             </div>
-
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-[0.8rem] font-bold">{cur.temperature}</span>
-                <span className="text-primary font-mono text-xs">{temperature.toFixed(1)}</span>
-              </div>
-              <Slider
-                value={[temperature]}
-                onValueChange={(v: number[]) => setTemperature(v[0])}
-                max={2}
-                step={0.1}
-                className="py-2"
-              />
-            </div>
           </div>
 
           <div className="mt-auto pt-6 border-t border-border/50">
@@ -316,30 +286,13 @@ export default function App() {
 
         {/* Main Content */}
         <main className="flex-1 p-8 flex flex-col gap-6 overflow-y-auto bg-background">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-            <div className="space-y-3 flex-1 max-w-xs">
-              <span className="text-[0.7rem] font-bold uppercase text-muted-foreground tracking-widest block">
-                {cur.expressionStyle}
-              </span>
-              <Select value={style} onValueChange={setStyle}>
-                <SelectTrigger className="bg-card border-border h-10">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {styles.map(s => (
-                    <SelectItem key={s.id} value={s.id}>{s.label[lang]}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex justify-between items-end flex-1">
-              <span className="text-[0.7rem] font-bold uppercase text-muted-foreground tracking-widest">
-                {cur.inputLabel}
-              </span>
-              <span className="text-[0.7rem] text-muted-foreground font-mono">
-                {text.length} / 5000
-              </span>
-            </div>
+          <div className="flex justify-between items-end">
+            <span className="text-[0.7rem] font-bold uppercase text-muted-foreground tracking-widest">
+              {cur.inputLabel}
+            </span>
+            <span className="text-[0.7rem] text-muted-foreground font-mono">
+              {text.length} / 5000
+            </span>
           </div>
 
           <Textarea
@@ -360,7 +313,6 @@ export default function App() {
                   key={i}
                   onClick={() => {
                     setText(p.text[lang]);
-                    setStyle("neutral");
                   }}
                   className="p-3 text-left border rounded-lg hover:bg-secondary transition-all group active:scale-[0.98]"
                 >
@@ -397,7 +349,9 @@ export default function App() {
               variant="outline" 
               size="lg" 
               className="h-12 px-8 font-medium"
-              onClick={() => setText("")}
+              onClick={() => {
+                setText("");
+              }}
               disabled={isLoading || !text}
             >
               {cur.clear}

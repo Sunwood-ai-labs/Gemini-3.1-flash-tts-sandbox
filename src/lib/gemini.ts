@@ -10,26 +10,36 @@ export interface TTSOptions {
   temperature?: number;
 }
 
-export async function generateSpeech({ text, voice, temperature = 1 }: TTSOptions) {
+export async function generateSpeech({ text, voice }: TTSOptions) {
   try {
-    const response = await ai.models.generateContent({
+    const response = await ai.models.generateContentStream({
       model: "gemini-3.1-flash-tts-preview",
-      contents: [{ parts: [{ text }] }],
+      contents: [
+        {
+          role: "user",
+          parts: [{ text: `## Transcript:\n${text}` }],
+        },
+      ],
       config: {
-        responseModalities: [Modality.AUDIO],
+        responseModalities: ["AUDIO"],
         speechConfig: {
           voiceConfig: {
             prebuiltVoiceConfig: { voiceName: voice },
           },
         },
-        temperature,
       },
-    });
+    } as any);
 
-    const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    let base64Audio = "";
+    for await (const chunk of response) {
+      const part = chunk.candidates?.[0]?.content?.parts?.[0];
+      if (part?.inlineData?.data) {
+        base64Audio += part.inlineData.data;
+      }
+    }
     
     if (!base64Audio) {
-      throw new Error("No audio data received from Gemini");
+      throw new Error("No audio data received from Gemini.");
     }
 
     return base64Audio;
