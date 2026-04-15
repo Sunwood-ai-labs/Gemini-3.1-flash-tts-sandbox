@@ -32,7 +32,7 @@ import {
 } from "@/components/ui/select";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
-import { generateSpeech, playRawAudio, VoiceName } from "@/src/lib/gemini";
+import { generateSpeech, PCMStreamPlayer, VoiceName } from "@/src/lib/gemini";
 
 interface HistoryItem {
   id: string;
@@ -126,8 +126,14 @@ export default function App() {
     }
 
     setIsLoading(true);
+    const player = new PCMStreamPlayer();
     try {
-      const audioData = await generateSpeech({ text, voice });
+      setIsPlaying(true);
+      const audioData = await generateSpeech({ 
+        text, 
+        voice,
+        onChunk: (chunk) => player.feed(chunk)
+      });
       
       const newItem: HistoryItem = {
         id: crypto.randomUUID(),
@@ -139,27 +145,30 @@ export default function App() {
       
       setHistory(prev => [newItem, ...prev]);
       toast.success(lang === "ja" ? "音声を生成しました" : "Speech generated!");
-      
-      setIsPlaying(true);
-      await playRawAudio(audioData);
-      setIsPlaying(false);
     } catch (error) {
       toast.error(lang === "ja" ? "生成に失敗しました" : "Failed to generate.");
       console.error(error);
+      player.stop();
     } finally {
       setIsLoading(false);
+      // Keep isPlaying true for a bit or handle it better
+      setTimeout(() => setIsPlaying(false), 1000);
     }
   };
 
   const handlePlayHistory = async (item: HistoryItem) => {
     if (isPlaying) return;
+    const player = new PCMStreamPlayer();
     setIsPlaying(true);
     try {
-      await playRawAudio(item.audioData);
+      player.feed(item.audioData);
     } catch (error) {
       toast.error("Error playing audio.");
     } finally {
-      setIsPlaying(false);
+      setTimeout(() => {
+        setIsPlaying(false);
+        player.stop();
+      }, 2000);
     }
   };
 
